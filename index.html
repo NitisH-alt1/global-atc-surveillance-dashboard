@@ -842,7 +842,40 @@ const AERODATABOX_KEY = ''; // Optional: paste your RapidAPI key here for richer
 
 // ── AviationStack real-time flight data ──────────────────────────────────────
 const AVIATIONSTACK_KEY = '7fc59c9159cc732627c2ea50d66f3287';
-const AVIATIONSTACK_REFRESH_MS = 60000; // 60 sec — AviationStack free tier limit
+const AVIATIONSTACK_REFRESH_MS = 60000;
+  const flightCache = {};
+
+async function getFlightInfo(flightNo){
+
+    if(!flightNo) return null;
+
+    if(flightCache[flightNo])
+        return flightCache[flightNo];
+
+    try{
+
+        const url =
+        `https://api.aviationstack.com/v1/flights?access_key=${AVIATIONSTACK_KEY}&flight_iata=${flightNo}`;
+
+        const res = await fetch(url);
+
+        const data = await res.json();
+
+        if(data.data && data.data.length){
+
+            flightCache[flightNo] = data.data[0];
+
+            return data.data[0];
+        }
+
+    }catch(err){
+
+        console.warn('AviationStack error:',err);
+
+    }
+
+    return null;
+}// 60 sec — AviationStack free tier limit
 // Direct URL — works when opened from a web server or with CORS disabled
 const AVIATIONSTACK_URL = `https://api.aviationstack.com/v1/flights?access_key=${AVIATIONSTACK_KEY}&flight_status=active&limit=100`;
 // Public CORS proxy — used automatically when fetching from a local file
