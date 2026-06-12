@@ -862,20 +862,25 @@ async function getFlightInfo(flightNo){
         const data = await res.json();
 
         if(data.data && data.data.length){
+flightCache[flightNo] = data.data[0];
 
-            flightCache[flightNo] = data.data[0];
+return data.data[0];
 
-            return data.data[0];
-        }
+}    // closes if(data.data && data.data.length)
 
-    }catch(err){
+}    // closes try
 
-        console.warn('AviationStack error:',err);
+catch(err){
 
-    }
+    console.warn('AviationStack error:',err);
 
-    return null;
-}// 60 sec — AviationStack free tier limit
+}
+
+return null;
+
+}
+    
+// 60 sec — AviationStack free tier limit
 // Direct URL — works when opened from a web server or with CORS disabled
 const AVIATIONSTACK_URL = `https://api.aviationstack.com/v1/flights?access_key=${AVIATIONSTACK_KEY}&flight_status=active&limit=100`;
 // Public CORS proxy — used automatically when fetching from a local file
