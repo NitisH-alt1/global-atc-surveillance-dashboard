@@ -4233,6 +4233,114 @@ setInterval(fetchLiveFlights, 15000);
 <div style="margin-top:8px;font-size:7px;color:#444;text-align:center;">Powered by LiveATC.net</div>
 </div>
 <script>var ATC_AIRPORTS={"north_america":[{n:"New York JFK (KJFK)",c:"kjfk_twr"},{n:"Los Angeles (KLAX)",c:"klax-twr"},{n:"Chicago ORD (KORD)",c:"kord_twr"},{n:"Atlanta (KATL)",c:"katl-twr"},{n:"Miami (KMIA)",c:"kmia_twr"},{n:"Boston (KBOS)",c:"kbos_twr"},{n:"San Francisco (KSFO)",c:"ksfo_twr"},{n:"Las Vegas (KLAS)",c:"klas_twr"},{n:"Seattle (KSEA)",c:"ksea_twr"},{n:"Denver (KDEN)",c:"kden_twr"},{n:"Washington DC (KDCA)",c:"kdca_twr"},{n:"Philadelphia (KPHL)",c:"kphl_twr"},{n:"Toronto (CYYZ)",c:"cyyz_twr"},{n:"Vancouver (CYVR)",c:"cyvr_twr"}],"europe":[{n:"London Heathrow (EGLL)",c:"egll2_s"},{n:"Paris CDG (LFPG)",c:"lfpg"},{n:"Frankfurt (EDDF)",c:"eddf2_s"},{n:"Amsterdam (EHAM)",c:"eham2_s"},{n:"Zurich (LSZH)",c:"lszh2_s"},{n:"Istanbul (LTBA)",c:"ltba"},{n:"Madrid (LEMD)",c:"lemd"},{n:"Barcelona (LEMD)",c:"lemd_twr"},{n:"Munich (EDDM)",c:"eddm"},{n:"Rome (LIRF)",c:"lirf_twr"},{n:"Vienna (LOWW)",c:"loww"},{n:"Brussels (EBBR)",c:"ebbr"}],"middle_east":[{n:"Dubai (OMDB)",c:"omdb"},{n:"Abu Dhabi (OMAA)",c:"omaa"},{n:"Doha (OTBD)",c:"otbd"},{n:"Riyadh (OERY)",c:"oery"},{n:"Jeddah (OEJN)",c:"oejn"}],"asia_pacific":[{n:"Singapore (WSSS)",c:"wsss_app"},{n:"Hong Kong (VHHH)",c:"vhhh2"},{n:"Tokyo Narita (RJAA)",c:"rjaa"},{n:"Tokyo Haneda (RJTT)",c:"rjtt"},{n:"Bangkok (VTBS)",c:"vtbs"},{n:"Kuala Lumpur (WMKK)",c:"wmkk"},{n:"Seoul Incheon (RKSI)",c:"rksi"},{n:"Sydney (YSSY)",c:"yssy_twr"},{n:"Melbourne (YMML)",c:"ymml"},{n:"Brisbane (YBBN)",c:"ybbn_twr"}],"africa":[{n:"Johannesburg (FAOR)",c:"faor"},{n:"Cairo (HECA)",c:"heca"},{n:"Lagos (DNKO)",c:"dnko"}]};function updateAirports(){var r=document.getElementById("atc-region").value;var s=document.getElementById("atc-airport");s.innerHTML='<option value="">-- SELECT AIRPORT --</option>';if(!r||!ATC_AIRPORTS[r])return;ATC_AIRPORTS[r].forEach(function(a){var o=document.createElement("option");o.value=a.c;o.textContent=a.n;s.appendChild(o);});}function playATC(){var s=document.getElementById("atc-airport");var c=s.value;var n=s.options[s.selectedIndex]?s.options[s.selectedIndex].textContent:"";if(!c)return;var url="https://s1-fmt2.liveatc.net/"+c;var a=document.getElementById("atc-audio");a.src=url;a.load();document.getElementById("atc-airport-name").textContent="TUNED: "+n;document.getElementById("atc-status").textContent="? STREAMING...";document.getElementById("atc-status").style.color="#00ff88";}</script></body>
+<script>
+/**
+ * ATC Live — Backend Connector Patch
+ * ================================
+ * Paste this whole block into your atc_live_v7.html, just before </body>
+ * (after the existing scripts).
+ */
+(function () {
+  // — Config
+  const BACKEND_URL = 'https://atc-backend-4unh.onrender.com';  // <-- updated
+  const POLL_MS     = 8000;
+  let   _pollTimer  = null;
+  let   _connected  = false;
+
+  // — Drop-in replacement for fetchLiveFlights()
+  async function fetchFromBackend() {
+    const url = `${BACKEND_URL}/api/flights`;
+    const res = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(9000) });
+    if (!res.ok) throw new Error(`Backend HTTP ${res.status}`);
+    const data = await res.json();
+    if (!data.aircraft || !data.aircraft.length) throw new Error('Backend: empty response');
+
+    const live = data.aircraft.map(ac => {
+      const v2compat = {
+        hex:       ac.icao24,
+        flight:    ac.callsign,
+        lat:       ac.lat,
+        lon:       ac.lon,
+        alt_baro:  ac.alt_ft,
+        gs:        ac.gs_kts,
+        track:     ac.heading,
+        squawk:    ac.squawk,
+        t:         ac.type,
+        on_ground: false,
+      };
+      return adsbV2ToPlane(v2compat);
+    }).filter(Boolean);
+
+    return { live, source: data.source, count: data.count };
+  }
+
+  // — Route enrichment via backend
+  const _origEnrich = window.enrichWithAeroDataBox;
+  window.enrichWithAeroDataBox = function (callsign, cb) {
+    const key = window._AERODATABOX_KEY || AERODATABOX_KEY;
+    if (key) {
+      return _origEnrich ? _origEnrich(callsign, cb) : cb(null);
+    }
+    const cs = callsign.trim().replace(/\s/g, '');
+    fetch(`${BACKEND_URL}/api/route/${cs}`, { signal: AbortSignal.timeout(5000) })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data) { cb(null); return; }
+        cb({
+          departure: { iataCode: data.origin  || data.estDepartureAirport || '?' },
+          arrival:   { iataCode: data.destination || data.estArrivalAirport || '?' },
+          airline:   { name: data.callsign || callsign },
+        });
+      })
+      .catch(() => cb(null));
+  };
+
+  // — Override the master fetch function
+  const _origFetchLive = window.fetchLiveFlights;
+  window.fetchLiveFlights = async function () {
+    setApiStatus('⟳ CONNECTING BACKEND…', false);
+    try {
+      const { live, source, count } = await fetchFromBackend();
+      if (live.length) {
+        mergeLivePlanes(live, `BACKEND·${source.toUpperCase()}`);
+        _connected = true;
+        return;
+      }
+    } catch (e) {
+      console.warn('[backend-patch] Backend fetch failed:', e.message);
+      _connected = false;
+    }
+    console.info('[backend-patch] Falling back to direct fetch');
+    return _origFetchLive ? _origFetchLive() : null;
+  };
+
+  // — Emergency monitor
+  async function pollEmergencies() {
+    try {
+      const res  = await fetch(`${BACKEND_URL}/api/emergencies`, { cache: 'no-store' });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.count > 0) {
+        console.warn(`[ATC] ${data.count} EMERGENCY SQUAWK(S):`, data.aircraft.map(a => `${a.callsign} (${a.squawk})`));
+      }
+    } catch (_) { /* silent */ }
+  }
+  setInterval(pollEmergencies, 10000);
+
+  // — Status check on load
+  fetch(`${BACKEND_URL}/api/status`, { signal: AbortSignal.timeout(3000) })
+    .then(r => r.json())
+    .then(s => {
+      console.info(`[ATC Backend] ✓ connected — source=${s.source} aircraft=${s.aircraft_cached}` +
+        ` pyopensky=${s.pyopensky} opensky_auth=${s.opensky_auth}`);
+    })
+    .catch(() => {
+      console.warn('[ATC Backend] ✗ not reachable — using direct fetch fallback');
+    });
+
+  console.info('[backend-patch] ATC backend connector loaded → ' + BACKEND_URL);
+})();
+</script>
 </html>
 
 
