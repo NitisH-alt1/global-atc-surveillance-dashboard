@@ -57,4 +57,42 @@
 </tr>
 
 </table>
-```
+```html
+<script>
+
+async function loadStats() {
+
+try {
+
+const response = await fetch("https://atc-backend-4unh.onrender.com/api/stats");
+
+const data = await response.json();
+
+document.getElementById("total-flights").innerText = data.totalFlights || "---";
+document.getElementById("live-flights").innerText = data.liveFlights || "---";
+document.getElementById("departures").innerText = data.departures || "---";
+document.getElementById("arrivals").innerText = data.arrivals || "---";
+document.getElementById("avg-altitude").innerText = data.avgAltitude || "---";
+document.getElementById("avg-speed").innerText = data.avgSpeed || "---";
+document.getElementById("aircraft-types").innerText = data.aircraftTypes || "---";
+document.getElementById("busiest-airport").innerText = data.busiestAirport || "---";
+document.getElementById("busiest-route").innerText = data.busiestRoute || "---";
+document.getElementById("last-update").innerText = new Date().toLocaleTimeString();
+
+}
+catch(error) {
+
+console.log(error);
+
+}
+
+}
+
+loadStats();
+
+setInterval(loadStats, 30000);
+
+</script>
+
+</body>
+</html>
