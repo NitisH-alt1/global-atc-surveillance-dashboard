@@ -15,6 +15,37 @@ font-family:monospace;
 <h1>LIVE ATC AUDIO</h1>
 
 <!-- Paste lines 388-418 from atc_live_v9.html below -->
+  <div id="audio-panel">
+    <div id="audio-title">??? LIVE ATC AUDIO</div>
+    <div class="audio-row">
+      <select class="audio-select" id="region-select" onchange="updateAirports()">
+        <option value="">?? SELECT REGION</option>
+        <option value="us">🇺🇸 United States</option>
+        <option value="uk">🇬🇧 United Kingdom</option>
+        <option value="eu">🇪🇺 Europe</option>
+        <option value="as">🌏 Asia Pacific</option>
+        <option value="me">🌍 Middle East</option>
+        <option value="af">🌍 Africa</option>
+        <option value="sa">🌎 South America</option>
+        <option value="au">🇦🇺 Australia</option>
+        <option value="in">🇮🇳 India</option>
+      </select>
+    </div>
+    <div class="audio-row">
+      <select class="audio-select" id="airport-select" onchange="loadAudio()">
+        <option value="">-- SELECT AIRPORT --</option>
+      </select>
+    </div>
+    <div id="airport-display">AIRPORT: ---</div>
+    <div id="audio-player-wrap">
+      <audio id="atc-audio" controls preload="none">
+        <source id="audio-src" src="" type="audio/mpeg">
+      </audio>
+      <div id="audio-status">? READY</div>
+    </div>
+    <div id="powered-by">Powered by LiveATC.net</div>
+  </div>
+</div>
 
 </body>
 </html>
