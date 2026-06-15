@@ -5,27 +5,47 @@
 
 <style>
 body{
-background:black;
-color:cyan;
-font-family:monospace;
+    background:black;
+    color:cyan;
+    font-family:monospace;
 }
 
 table{
-width:80%;
-border-collapse:collapse;
+    width:100%;
+    border-collapse:collapse;
 }
 
 th,td{
-border:1px solid cyan;
-padding:8px;
+    border:1px solid cyan;
+    padding:10px;
+}
+
+input{
+    background:black;
+    color:cyan;
+    border:1px solid cyan;
+    padding:8px;
+}
+
+button{
+    padding:8px;
 }
 </style>
 
 </head>
-
 <body>
 
-<h1>🌦 WEATHER INFORMATION</h1>
+<h1>✈ WEATHER INFORMATION</h1>
+
+<input
+id="airport-code"
+placeholder="Airport ICAO (VIDP, VOBL, EGLL...)">
+
+<button onclick="getWeather()">
+SEARCH
+</button>
+
+<br><br>
 
 <table>
 
@@ -35,56 +55,53 @@ padding:8px;
 </tr>
 
 <tr>
+<td>Airport</td>
+<td id="airport">---</td>
+</tr>
+
+<tr>
 <td>Temperature</td>
-<td>---</td>
+<td id="temp">---</td>
 </tr>
 
 <tr>
-<td>Humidity</td>
-<td>---</td>
-</tr>
-
-<tr>
-<td>Pressure</td>
-<td>---</td>
-</tr>
-
-<tr>
-<td>Wind Speed</td>
-<td>---</td>
-</tr>
-
-<tr>
-<td>Wind Direction</td>
-<td>---</td>
+<td>Wind</td>
+<td id="wind">---</td>
 </tr>
 
 <tr>
 <td>Visibility</td>
-<td>---</td>
+<td id="vis">---</td>
 </tr>
 
 <tr>
-<td>Cloud Cover</td>
-<td>---</td>
+<td>Pressure</td>
+<td id="pressure">---</td>
 </tr>
 
 <tr>
-<td>Rainfall</td>
-<td>---</td>
-</tr>
-
-<tr>
-<td>METAR</td>
-<td>---</td>
-</tr>
-
-<tr>
-<td>TAF</td>
-<td>---</td>
+<td>Condition</td>
+<td id="condition">---</td>
 </tr>
 
 </table>
+
+<script>
+
+function getWeather(){
+
+let code=document.getElementById("airport-code").value.toUpperCase();
+
+document.getElementById("airport").innerHTML=code;
+document.getElementById("temp").innerHTML="32°C";
+document.getElementById("wind").innerHTML="280° / 12 kt";
+document.getElementById("vis").innerHTML="10 km";
+document.getElementById("pressure").innerHTML="1013 hPa";
+document.getElementById("condition").innerHTML="Clear";
+
+}
+
+</script>
 
 </body>
 </html>
