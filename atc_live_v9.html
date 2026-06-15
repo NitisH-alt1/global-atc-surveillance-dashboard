@@ -3,7 +3,1107 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=1920, initial-scale=1.0">
+<meta name="viewport" content="width=1920, initial-scale=1.0"><!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Global ATC Surveillance · Live Data</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+:root {
+  --bg: #0a0e1a;
+  --bg2: #0d1225;
+  --bg3: #111828;
+  --panel: #0d1630;
+  --border: #1e3a5f;
+  --border2: #2a4a6f;
+  --text: #c8d8f0;
+  --text2: #7a9cc0;
+  --accent: #00d4ff;
+  --accent2: #0088cc;
+  --green: #00ff88;
+  --yellow: #ffcc00;
+  --red: #ff4444;
+  --orange: #ff8800;
+  --purple: #aa44ff;
+}
+body { background:var(--bg); color:var(--text); font-family:'Courier New',monospace; font-size:11px; overflow:hidden; height:100vh; display:flex; flex-direction:column; }
+
+/* TOP BAR */
+#topbar { background:var(--bg2); border-bottom:1px solid var(--border); padding:4px 8px; display:flex; align-items:center; gap:12px; flex-wrap:wrap; height:52px; }
+#logo { font-size:14px; font-weight:bold; color:var(--accent); letter-spacing:2px; white-space:nowrap; }
+#logo span { color:var(--text2); font-size:9px; display:block; }
+.tb-clock { font-size:18px; color:var(--green); font-weight:bold; letter-spacing:2px; }
+.tb-date { font-size:9px; color:var(--text2); }
+.tb-status { display:flex; gap:6px; flex-wrap:wrap; }
+.badge { padding:2px 6px; border-radius:2px; font-size:9px; font-weight:bold; letter-spacing:1px; }
+.badge-live { background:#003300; color:var(--green); border:1px solid var(--green); }
+.badge-sim { background:#220000; color:#ff6666; border:1px solid #ff4444; cursor:pointer; }
+.badge-active { background:#001133; color:var(--accent); border:1px solid var(--accent2); }
+#flight-count { font-size:20px; color:var(--accent); font-weight:bold; }
+#flight-label { font-size:9px; color:var(--text2); }
+.source-tags { display:flex; gap:4px; flex-wrap:wrap; }
+.src-tag { padding:1px 5px; font-size:8px; border-radius:2px; }
+.src-on { background:#001a2e; color:var(--accent); border:1px solid var(--accent2); }
+.src-off { background:#1a0000; color:#ff6666; border:1px solid #ff3333; }
+.tb-right { margin-left:auto; display:flex; align-items:center; gap:8px; }
+
+/* MAIN LAYOUT */
+#main { display:flex; flex:1; overflow:hidden; }
+
+/* LEFT PANEL */
+#left { width:150px; min-width:150px; background:var(--panel); border-right:1px solid var(--border); display:flex; flex-direction:column; overflow-y:auto; }
+.panel-section { padding:6px 8px; border-bottom:1px solid var(--border); }
+.section-title { color:var(--accent2); font-size:9px; letter-spacing:1px; margin-bottom:4px; display:flex; align-items:center; gap:4px; }
+.section-title::before { content:'▾'; }
+.filter-row { display:flex; align-items:center; gap:4px; margin-bottom:2px; }
+.filter-row input[type=checkbox] { accent-color:var(--accent); }
+.filter-row label { color:var(--text2); font-size:10px; cursor:pointer; }
+.slider-row { margin:4px 0; }
+.slider-row label { color:var(--text2); font-size:9px; display:block; margin-bottom:2px; }
+input[type=range] { width:100%; accent-color:var(--accent); height:4px; }
+.val-display { color:var(--accent); font-size:9px; text-align:right; }
+
+/* MAP */
+#map-wrap { flex:1; position:relative; }
+#map { height:100%; width:100%; background:#060b18; }
+.leaflet-container { background:#060b18 !important; }
+
+/* RIGHT PANEL */
+#right { width:200px; min-width:200px; background:var(--panel); border-left:1px solid var(--border); display:flex; flex-direction:column; overflow:hidden; }
+#strips-header { padding:6px 8px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+#strips-title { color:var(--accent); font-size:10px; letter-spacing:1px; font-weight:bold; }
+#strip-search { width:80px; background:var(--bg3); border:1px solid var(--border); color:var(--text); padding:2px 4px; font-size:9px; font-family:inherit; }
+#strips-list { flex:1; overflow-y:auto; }
+.strip { padding:5px 8px; border-bottom:1px solid var(--border); cursor:pointer; transition:background 0.1s; }
+.strip:hover { background:var(--bg3); }
+.strip.selected { background:#001a33; border-left:2px solid var(--accent); }
+.strip.emg { border-left:2px solid var(--red) !important; background:#1a0000; }
+.strip-callsign { color:var(--accent); font-size:10px; font-weight:bold; }
+.strip-icao { color:var(--text2); font-size:8px; }
+.strip-detail { color:var(--text); font-size:9px; }
+.strip-route { color:var(--text2); font-size:8px; }
+.strip-emg { color:var(--red); font-size:8px; font-weight:bold; }
+
+/* BOTTOM PANELS */
+#bottom { display:flex; height:160px; border-top:1px solid var(--border); }
+
+/* ATC COMMS */
+#comms-panel { width:300px; min-width:300px; background:var(--bg2); border-right:1px solid var(--border); padding:6px 8px; display:flex; flex-direction:column; }
+#comms-title { color:var(--accent); font-size:9px; letter-spacing:1px; margin-bottom:4px; display:flex; justify-content:space-between; }
+#freq-display { font-size:16px; color:var(--green); font-weight:bold; text-align:center; margin-bottom:4px; }
+.comm-btns { display:flex; gap:3px; margin-bottom:4px; }
+.comm-btn { flex:1; padding:3px; font-size:9px; font-family:inherit; border:1px solid var(--border2); background:var(--bg3); color:var(--text2); cursor:pointer; letter-spacing:1px; border-radius:2px; }
+.comm-btn:hover { background:var(--border); color:var(--text); }
+.comm-btn.active { background:#001a33; color:var(--accent); border-color:var(--accent); }
+#comm-log { flex:1; overflow-y:auto; font-size:9px; line-height:1.4; }
+#comm-log div { margin-bottom:1px; }
+.comm-tx { color:var(--green); }
+.comm-rx { color:var(--accent); }
+.comm-sys { color:var(--yellow); }
+#transmit-btn { margin-top:4px; padding:4px; background:#001a2e; border:1px solid var(--accent2); color:var(--accent); font-family:inherit; font-size:9px; letter-spacing:2px; cursor:pointer; width:100%; }
+#transmit-btn:hover { background:var(--accent2); }
+
+/* ALERT PANEL */
+#alert-panel { width:200px; min-width:200px; background:var(--bg2); border-right:1px solid var(--border); padding:6px 8px; }
+#alert-title { color:var(--yellow); font-size:9px; letter-spacing:1px; margin-bottom:6px; }
+.alert-row { display:flex; justify-content:space-between; margin-bottom:6px; }
+.alert-box { text-align:center; width:48%; }
+.alert-label { font-size:8px; color:var(--text2); }
+.alert-val { font-size:20px; font-weight:bold; }
+.alert-sub { font-size:8px; }
+.sq7700 { color:var(--red); }
+.sq7600 { color:var(--yellow); }
+.sq7500 { color:var(--orange); }
+.sq-conf { color:var(--purple); }
+#conflicts-list { font-size:8px; color:var(--text2); }
+
+/* LIVE ATC AUDIO */
+#audio-panel { flex:1; background:var(--bg2); padding:6px 10px; display:flex; flex-direction:column; }
+#audio-title { color:var(--accent); font-size:10px; letter-spacing:2px; margin-bottom:8px; text-align:center; font-weight:bold; }
+.audio-row { display:flex; gap:8px; margin-bottom:6px; }
+.audio-select { flex:1; background:var(--bg3); border:1px solid var(--border2); color:var(--text); padding:4px 6px; font-size:10px; font-family:inherit; border-radius:2px; cursor:pointer; }
+.audio-select:hover { border-color:var(--accent2); }
+#airport-display { font-size:10px; color:var(--accent); text-align:center; margin-bottom:4px; letter-spacing:1px; }
+#audio-player-wrap { display:flex; flex-direction:column; gap:4px; }
+audio { width:100%; height:28px; }
+audio::-webkit-media-controls-panel { background:var(--bg3); }
+#audio-status { font-size:9px; color:var(--green); text-align:center; letter-spacing:1px; }
+#powered-by { font-size:8px; color:var(--text2); text-align:center; margin-top:2px; }
+
+/* SELECTED AIRCRAFT */
+#aircraft-detail { position:absolute; top:60px; right:210px; width:200px; background:rgba(10,14,26,0.95); border:1px solid var(--accent2); border-radius:4px; padding:8px; display:none; z-index:1000; }
+#ac-close { float:right; cursor:pointer; color:var(--text2); font-size:12px; }
+#ac-title { color:var(--accent); font-size:11px; font-weight:bold; margin-bottom:6px; }
+.ac-row { display:flex; justify-content:space-between; margin-bottom:2px; font-size:9px; }
+.ac-key { color:var(--text2); }
+.ac-val { color:var(--text); }
+
+/* MAP OVERLAYS */
+#map-controls { position:absolute; top:8px; left:8px; z-index:500; display:flex; flex-direction:column; gap:4px; }
+.map-btn { padding:3px 7px; background:rgba(10,14,26,0.85); border:1px solid var(--border2); color:var(--text2); font-family:inherit; font-size:9px; cursor:pointer; border-radius:2px; }
+.map-btn:hover { border-color:var(--accent); color:var(--accent); }
+.map-btn.active { background:rgba(0,26,51,0.9); border-color:var(--accent); color:var(--accent); }
+
+/* STATS OVERLAY */
+#stats-overlay { position:absolute; bottom:8px; left:8px; z-index:500; background:rgba(10,14,26,0.85); border:1px solid var(--border); padding:6px 8px; font-size:9px; border-radius:2px; }
+.stat-row { display:flex; justify-content:space-between; gap:20px; }
+.stat-key { color:var(--text2); }
+.stat-val { color:var(--green); font-weight:bold; }
+
+/* Emergency flash */
+@keyframes emgFlash { 0%,100%{opacity:1} 50%{opacity:0.3} }
+.emg-flash { animation: emgFlash 1s infinite; }
+
+/* Scrollbars */
+::-webkit-scrollbar { width:4px; height:4px; }
+::-webkit-scrollbar-track { background:var(--bg); }
+::-webkit-scrollbar-thumb { background:var(--border2); border-radius:2px; }
+
+/* Custom aircraft icon coloring */
+.aircraft-icon { transition: transform 0.5s; }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div id="topbar">
+  <div>
+    <div id="logo">✈ GLOBAL ATC SURVEILLANCE · SATELLITE<span>SENSOR MODE: RADAR · AIRPLANES.LIVE / ADSB.FI / OPENSKY · REAL ADS-B+MLAT · AUTO-FALLBACK</span></div>
+  </div>
+  <div class="tb-status">
+    <span class="badge badge-live">● LIVE FR24 MAP</span>
+    <span class="badge badge-sim" id="sim-toggle" onclick="toggleSim()">○ SIMULATED</span>
+  </div>
+  <div class="source-tags" id="source-tags">
+    <span class="src-tag src-off" id="src-adsb">ADSB.FI</span>
+    <span class="src-tag src-off" id="src-lol">ADSB.LOL</span>
+    <span class="src-tag src-off" id="src-sky">OPENSKY</span>
+    <span class="src-tag src-off" id="src-proxy">PROXY</span>
+  </div>
+  <div>
+    <div class="tb-clock" id="utc-clock">--:--:--</div>
+    <div class="tb-date" id="utc-date">--</div>
+  </div>
+  <div>
+    <div id="flight-count">000</div>
+    <div id="flight-label">ACTIVE FLIGHTS</div>
+  </div>
+  <div style="display:flex;gap:4px;">
+    <span class="badge badge-active" id="wam-badge">WAM</span>
+    <span class="badge badge-active">PSR</span>
+    <span class="badge badge-active">SSR ACTIVE</span>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div id="main">
+  <!-- LEFT PANEL -->
+  <div id="left">
+    <div class="panel-section">
+      <div class="section-title">RANGE RINGS</div>
+      <div class="filter-row"><input type="checkbox" id="r50" checked><label for="r50">50 NM</label></div>
+      <div class="filter-row"><input type="checkbox" id="r100" checked><label for="r100">100 NM</label></div>
+      <div class="filter-row"><input type="checkbox" id="r200" checked><label for="r200">200 NM</label></div>
+      <div class="filter-row"><input type="checkbox" id="r300"><label for="r300">300 NM</label></div>
+      <div style="color:var(--text2);font-size:8px;margin-top:4px;">CENTER: GLOBAL</div>
+    </div>
+    <div class="panel-section">
+      <div class="section-title">SWKY</div>
+      <div class="filter-row"><input type="checkbox" checked><label>COUNTRY</label></div>
+    </div>
+    <div class="panel-section">
+      <div class="section-title">ALT FILTER</div>
+      <div class="slider-row">
+        <label>GND</label>
+        <input type="range" id="alt-min" min="0" max="450" value="0" oninput="updateAltFilter()">
+        <div class="val-display" id="alt-min-val">GND</div>
+      </div>
+      <div class="slider-row">
+        <label>FL200</label>
+        <input type="range" id="alt-max" min="0" max="600" value="600" oninput="updateAltFilter()">
+        <div class="val-display" id="alt-max-val">FL600</div>
+      </div>
+      <div class="slider-row">
+        <label>FL400</label>
+        <input type="range" id="alt-filter2" min="0" max="600" value="400">
+        <div class="val-display">MX</div>
+      </div>
+      <div style="color:var(--text2);font-size:9px;margin-top:2px;">ALL ALTITUDES</div>
+    </div>
+    <div class="panel-section">
+      <div class="section-title">DISPLAY</div>
+      <div class="filter-row"><input type="checkbox" id="show-callsigns" checked onchange="toggleLabels()"><label for="show-callsigns">CALLSIGNS</label></div>
+      <div class="filter-row"><input type="checkbox" id="show-vectors" checked><label for="show-vectors">SPEED VECTORS</label></div>
+      <div class="filter-row"><input type="checkbox" id="show-trails" checked><label for="show-trails">HISTORY TRAIL</label></div>
+      <div class="filter-row"><input type="checkbox" id="show-weather"><label for="show-weather">WEATHER</label></div>
+      <div class="filter-row"><input type="checkbox" id="show-jets"><label for="show-jets">JET STREAM</label></div>
+      <div class="filter-row"><input type="checkbox" id="show-sectors"><label for="show-sectors">SECTORS</label></div>
+    </div>
+    <div class="panel-section">
+      <div class="section-title">FILTER TYPE</div>
+      <div class="filter-row"><input type="checkbox" checked><label>ALL TRAFFIC</label></div>
+      <div class="filter-row"><input type="checkbox" checked><label>COMMERCIAL</label></div>
+      <div class="filter-row"><input type="checkbox" checked><label>GENERAL AVN</label></div>
+      <div class="filter-row"><input type="checkbox"><label>MILITARY</label></div>
+      <div class="filter-row"><input type="checkbox"><label>HELICOPTERS</label></div>
+    </div>
+    <div class="panel-section" style="border:none;">
+      <div class="section-title">STATS</div>
+      <div style="font-size:9px;color:var(--text2);">Sources: <span id="src-count" style="color:var(--green)">0</span></div>
+      <div style="font-size:9px;color:var(--text2);">Conflicts: <span id="conflict-count" style="color:var(--red)">0</span></div>
+      <div style="font-size:9px;color:var(--text2);">Emergency: <span id="emg-count" style="color:var(--yellow)">0</span></div>
+      <div style="font-size:9px;color:var(--text2);">Last Update:</div>
+      <div style="font-size:9px;color:var(--accent)" id="last-update">--</div>
+    </div>
+  </div>
+
+  <!-- MAP -->
+  <div id="map-wrap">
+    <div id="map"></div>
+    <div id="map-controls">
+      <button class="map-btn active" onclick="setMapStyle('dark')">DARK</button>
+      <button class="map-btn" onclick="setMapStyle('satellite')">SAT</button>
+      <button class="map-btn" onclick="setMapStyle('terrain')">TERRAIN</button>
+    </div>
+    <div id="stats-overlay">
+      <div class="stat-row">
+        <span class="stat-key">TOTAL:</span><span class="stat-val" id="stat-total">0</span>
+        <span class="stat-key">AIRBORNE:</span><span class="stat-val" id="stat-air">0</span>
+        <span class="stat-key">GND:</span><span class="stat-val" id="stat-gnd">0</span>
+      </div>
+    </div>
+    <!-- Aircraft detail popup -->
+    <div id="aircraft-detail">
+      <span id="ac-close" onclick="closeDetail()">✕</span>
+      <div id="ac-title">---</div>
+      <div class="ac-row"><span class="ac-key">ICAO24</span><span class="ac-val" id="ac-icao">---</span></div>
+      <div class="ac-row"><span class="ac-key">AIRLINE</span><span class="ac-val" id="ac-airline">---</span></div>
+      <div class="ac-row"><span class="ac-key">TYPE</span><span class="ac-val" id="ac-type">---</span></div>
+      <div class="ac-row"><span class="ac-key">ALT</span><span class="ac-val" id="ac-alt">---</span></div>
+      <div class="ac-row"><span class="ac-key">SPEED</span><span class="ac-val" id="ac-speed">---</span></div>
+      <div class="ac-row"><span class="ac-key">HDG</span><span class="ac-val" id="ac-hdg">---</span></div>
+      <div class="ac-row"><span class="ac-key">SQUAWK</span><span class="ac-val" id="ac-squawk">---</span></div>
+      <div class="ac-row"><span class="ac-key">LAT/LON</span><span class="ac-val" id="ac-pos">---</span></div>
+      <div class="ac-row"><span class="ac-key">ORIGIN</span><span class="ac-val" id="ac-origin">---</span></div>
+      <div class="ac-row"><span class="ac-key">DEST</span><span class="ac-val" id="ac-dest">---</span></div>
+      <div class="ac-row"><span class="ac-key">V/S</span><span class="ac-val" id="ac-vs">---</span></div>
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL (Flight Strips) -->
+  <div id="right">
+    <div id="strips-header">
+      <div id="strips-title">✈ FLIGHT STRIPS</div>
+      <input id="strip-search" placeholder="SEARCH..." oninput="filterStrips(this.value)">
+    </div>
+    <div id="strips-list"></div>
+  </div>
+</div>
+
+<!-- BOTTOM -->
+<div id="bottom">
+  <!-- ATC COMMS -->
+  <div id="comms-panel">
+    <div id="comms-title">
+      <span>⊡ ATC COMMS</span>
+      <span id="freq-live" style="color:var(--green);font-size:9px;">122.800 MHz</span>
+    </div>
+    <div class="comm-btns">
+      <button class="comm-btn active" onclick="setCommMode('GND')">GND</button>
+      <button class="comm-btn" onclick="setCommMode('TWR')">TWR</button>
+      <button class="comm-btn" onclick="setCommMode('APP')">APP</button>
+      <button class="comm-btn" onclick="setCommMode('DEP')">DEP</button>
+      <button class="comm-btn" onclick="setCommMode('ENR')">ENR</button>
+    </div>
+    <div id="comm-log"></div>
+    <button id="transmit-btn" onclick="transmitClearance()">⊡ TRANSMIT CLEARANCE</button>
+  </div>
+
+  <!-- ALERT PANEL -->
+  <div id="alert-panel">
+    <div id="alert-title">⚠ ALERT PANEL</div>
+    <div class="alert-row">
+      <div class="alert-box">
+        <div class="alert-label">SQUAWK 7700</div>
+        <div class="alert-val sq7700" id="sq7700-count">0</div>
+        <div class="alert-sub sq7700">EMERGENCY</div>
+      </div>
+      <div class="alert-box">
+        <div class="alert-label">SQUAWK 7600</div>
+        <div class="alert-val sq7600" id="sq7600-count">0</div>
+        <div class="alert-sub sq7600">RADIO FAIL</div>
+      </div>
+    </div>
+    <div class="alert-row">
+      <div class="alert-box">
+        <div class="alert-label">SQUAWK 7500</div>
+        <div class="alert-val sq7500" id="sq7500-count">0</div>
+        <div class="alert-sub sq7500">HIJACK</div>
+      </div>
+      <div class="alert-box">
+        <div class="alert-label">CONFLICTS</div>
+        <div class="alert-val sq-conf" id="conflicts-count">0</div>
+        <div class="alert-sub sq-conf">PROXIM</div>
+      </div>
+    </div>
+    <div id="conflicts-list">ACTIVE ALERTS<br>ALL SYSTEMS NORMAL</div>
+  </div>
+
+  <!-- LIVE ATC AUDIO PANEL -->
+  <div id="audio-panel">
+    <div id="audio-title">??? LIVE ATC AUDIO</div>
+    <div class="audio-row">
+      <select class="audio-select" id="region-select" onchange="updateAirports()">
+        <option value="">?? SELECT REGION</option>
+        <option value="us">🇺🇸 United States</option>
+        <option value="uk">🇬🇧 United Kingdom</option>
+        <option value="eu">🇪🇺 Europe</option>
+        <option value="as">🌏 Asia Pacific</option>
+        <option value="me">🌍 Middle East</option>
+        <option value="af">🌍 Africa</option>
+        <option value="sa">🌎 South America</option>
+        <option value="au">🇦🇺 Australia</option>
+        <option value="in">🇮🇳 India</option>
+      </select>
+    </div>
+    <div class="audio-row">
+      <select class="audio-select" id="airport-select" onchange="loadAudio()">
+        <option value="">-- SELECT AIRPORT --</option>
+      </select>
+    </div>
+    <div id="airport-display">AIRPORT: ---</div>
+    <div id="audio-player-wrap">
+      <audio id="atc-audio" controls preload="none">
+        <source id="audio-src" src="" type="audio/mpeg">
+      </audio>
+      <div id="audio-status">? READY</div>
+    </div>
+    <div id="powered-by">Powered by LiveATC.net</div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// GLOBAL STATE
+// ============================================================
+const state = {
+  aircraft: new Map(),  // icao24 -> aircraft object
+  markers: new Map(),   // icao24 -> leaflet marker
+  trails: new Map(),    // icao24 -> array of positions
+  selectedIcao: null,
+  simMode: false,
+  altMin: 0,
+  altMax: 60000,
+  commMode: 'GND',
+  updateCount: 0,
+  lastFetch: 0,
+  activeSources: new Set()
+};
+
+// ============================================================
+// MAP SETUP
+// ============================================================
+const map = L.map('map', {
+  center: [20, 0],
+  zoom: 3,
+  zoomControl: false,
+  attributionControl: false
+});
+
+const tileLayers = {
+  dark: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {maxZoom:19}),
+  satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {maxZoom:19}),
+  terrain: L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {maxZoom:17})
+};
+tileLayers.dark.addTo(map);
+L.control.zoom({position:'topright'}).addTo(map);
+
+function setMapStyle(style) {
+  Object.values(tileLayers).forEach(l => map.removeLayer(l));
+  tileLayers[style].addTo(map);
+  document.querySelectorAll('.map-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+}
+
+// ============================================================
+// AIRCRAFT ICON
+// ============================================================
+function getAircraftIcon(heading, altitude, squawk, selected) {
+  const isEmg = ['7700','7600','7500'].includes(String(squawk));
+  let color = selected ? '#00ffff' : isEmg ? '#ff4444' : altitude > 35000 ? '#00d4ff' : altitude > 20000 ? '#00aaff' : altitude > 10000 ? '#ffcc00' : '#ff8800';
+  const rad = (heading || 0) * Math.PI / 180;
+  const size = selected ? 16 : 12;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size*2}" height="${size*2}" viewBox="-${size} -${size} ${size*2} ${size*2}">
+    <g transform="rotate(${heading||0})">
+      <polygon points="0,-${size*0.8} ${size*0.4},${size*0.6} 0,${size*0.3} -${size*0.4},${size*0.6}" fill="${color}" opacity="0.9"/>
+    </g>
+  </svg>`;
+  return L.divIcon({
+    html: svg,
+    iconSize: [size*2, size*2],
+    iconAnchor: [size, size],
+    className: ''
+  });
+}
+
+// ============================================================
+// AIRCRAFT DATA SOURCES (CORS-FRIENDLY)
+// ============================================================
+
+// Source 1: api.adsb.fi (has proper CORS headers)
+async function fetchAdsbFi() {
+  try {
+    const r = await fetch('https://api.adsb.fi/v1/flights', {
+      headers: {'Accept': 'application/json'}
+    });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const d = await r.json();
+    const ac = d.aircraft || d.flights || [];
+    if (ac.length > 0) {
+      setSourceStatus('src-adsb', true);
+      state.activeSources.add('adsb.fi');
+      return normalizeAdsbFi(ac);
+    }
+  } catch(e) {
+    setSourceStatus('src-adsb', false);
+  }
+  return [];
+}
+
+function normalizeAdsbFi(list) {
+  return list.filter(a => a.lat && a.lon).map(a => ({
+    icao24: (a.hex || a.icao24 || '').toLowerCase(),
+    callsign: (a.flight || a.callsign || '').trim(),
+    lat: a.lat,
+    lon: a.lon,
+    altitude: a.alt_baro || a.altitude || 0,
+    speed: a.gs || a.speed || 0,
+    heading: a.track || a.heading || 0,
+    vs: a.baro_rate || a.vs || 0,
+    squawk: a.squawk || '0000',
+    type: a.t || a.type || '---',
+    origin: a.origin || '',
+    dest: a.dest || '',
+    source: 'adsb.fi'
+  }));
+}
+
+// Source 2: api.adsb.lol (has CORS)
+async function fetchAdsbLol() {
+  try {
+    const r = await fetch('https://api.adsb.lol/v2/aircraft');
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const d = await r.json();
+    const ac = d.aircraft || [];
+    if (ac.length > 0) {
+      setSourceStatus('src-lol', true);
+      state.activeSources.add('adsb.lol');
+      return normalizeLol(ac);
+    }
+  } catch(e) {
+    setSourceStatus('src-lol', false);
+  }
+  return [];
+}
+
+function normalizeLol(list) {
+  return list.filter(a => a.lat && a.lon).map(a => ({
+    icao24: (a.hex || '').toLowerCase(),
+    callsign: (a.flight || '').trim(),
+    lat: a.lat,
+    lon: a.lon,
+    altitude: a.alt_baro || 0,
+    speed: a.gs || 0,
+    heading: a.track || 0,
+    vs: a.baro_rate || 0,
+    squawk: a.squawk || '0000',
+    type: a.t || '---',
+    source: 'adsb.lol'
+  }));
+}
+
+// Source 3: OpenSky via allorigins proxy (reliable CORS workaround)
+async function fetchOpenSkyProxy() {
+  const regions = [
+    [-90, -180, -20, -60],   // South America
+    [-20, -180, 90, -60],    // Americas North
+    [-90, -60, 90, 60],      // Africa/Europe
+    [-90, 60, 90, 180],      // Asia/Pacific
+  ];
+  const results = [];
+  for (const [lamin, lomin, lamax, lomax] of regions) {
+    try {
+      const url = `https://opensky-network.org/api/states/all?lamin=${lamin}&lomin=${lomin}&lamax=${lamax}&lomax=${lomax}`;
+      const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+      const r = await fetch(proxyUrl);
+      if (!r.ok) continue;
+      const wrapper = await r.json();
+      const d = JSON.parse(wrapper.contents || '{}');
+      if (d.states) {
+        results.push(...normalizeOpenSky(d.states));
+        setSourceStatus('src-sky', true);
+        setSourceStatus('src-proxy', true);
+        state.activeSources.add('opensky');
+      }
+    } catch(e) {}
+  }
+  if (results.length === 0) {
+    setSourceStatus('src-sky', false);
+  }
+  return results;
+}
+
+function normalizeOpenSky(states) {
+  return (states || []).filter(s => s[5] && s[6]).map(s => ({
+    icao24: (s[0] || '').toLowerCase(),
+    callsign: (s[1] || '').trim(),
+    lat: s[6],
+    lon: s[5],
+    altitude: s[7] ? Math.round(s[7] * 3.28084) : 0, // meters to feet
+    speed: s[9] ? Math.round(s[9] * 1.94384) : 0,    // m/s to knots
+    heading: s[10] || 0,
+    vs: s[11] ? Math.round(s[11] * 196.85) : 0,       // m/s to ft/min
+    squawk: s[14] || '0000',
+    type: '---',
+    source: 'opensky'
+  }));
+}
+
+// Source 4: airplanes.live (alternative with good CORS)
+async function fetchAirplanesLive() {
+  try {
+    const r = await fetch('https://airplanes.live/api/point/0/0/25000', {
+      headers: {'Accept': 'application/json'}
+    });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const d = await r.json();
+    const ac = d.ac || [];
+    if (ac.length > 0) {
+      state.activeSources.add('airplanes.live');
+      return normalizeAdsbFi(ac); // same format
+    }
+  } catch(e) {}
+  return [];
+}
+
+// ============================================================
+// MAIN FETCH LOOP
+// ============================================================
+async function fetchAllSources() {
+  state.activeSources.clear();
+  
+  // Fetch all in parallel
+  const [a, b] = await Promise.all([
+    fetchAdsbFi(),
+    fetchAdsbLol()
+  ]);
+  
+  // Merge and deduplicate by icao24
+  const merged = new Map();
+  [...a, ...b].forEach(ac => {
+    if (ac.icao24 && !merged.has(ac.icao24)) {
+      merged.set(ac.icao24, ac);
+    }
+  });
+
+  // If we have fewer than 3000 aircraft, try proxy sources too
+  if (merged.size < 3000) {
+    try {
+      const c = await fetchOpenSkyProxy();
+      c.forEach(ac => {
+        if (ac.icao24 && !merged.has(ac.icao24)) {
+          merged.set(ac.icao24, ac);
+        }
+      });
+    } catch(e) {}
+  }
+
+  const all = Array.from(merged.values());
+  
+  if (all.length > 0) {
+    updateAircraft(all);
+    document.getElementById('src-count').textContent = state.activeSources.size;
+  } else {
+    // Fallback to simulation if no real data
+    if (!state.simMode) {
+      addCommLog('sys', 'No live data — enabling SIM MODE');
+      state.simMode = true;
+      document.getElementById('sim-toggle').className = 'badge badge-active emg-flash';
+      startSim();
+    }
+  }
+  
+  document.getElementById('last-update').textContent = new Date().toLocaleTimeString();
+  state.lastFetch = Date.now();
+}
+
+// ============================================================
+// UPDATE AIRCRAFT ON MAP
+// ============================================================
+function updateAircraft(list) {
+  const altMin = state.altMin;
+  const altMax = state.altMax;
+  const seen = new Set();
+  let sq7700=0, sq7600=0, sq7500=0, airborne=0, ground=0;
+  const emgList = [];
+
+  list.forEach(ac => {
+    if (!ac.lat || !ac.lon || isNaN(ac.lat) || isNaN(ac.lon)) return;
+    const alt = ac.altitude || 0;
+    if (alt < altMin || alt > altMax) return;
+    seen.add(ac.icao24);
+
+    // Track history
+    if (!state.trails.has(ac.icao24)) state.trails.set(ac.icao24, []);
+    const trail = state.trails.get(ac.icao24);
+    trail.push([ac.lat, ac.lon]);
+    if (trail.length > 20) trail.shift();
+
+    // Emergency squawk detection
+    const sq = String(ac.squawk);
+    if (sq === '7700') { sq7700++; emgList.push({...ac, emgType:'EMERGENCY'}); }
+    else if (sq === '7600') { sq7600++; emgList.push({...ac, emgType:'RADIO FAIL'}); }
+    else if (sq === '7500') { sq7500++; emgList.push({...ac, emgType:'HIJACK'}); }
+
+    if (alt > 500) airborne++; else ground++;
+
+    // Update or create marker
+    const isSelected = ac.icao24 === state.selectedIcao;
+    const icon = getAircraftIcon(ac.heading, alt, ac.squawk, isSelected);
+
+    if (state.markers.has(ac.icao24)) {
+      const m = state.markers.get(ac.icao24);
+      m.setLatLng([ac.lat, ac.lon]);
+      m.setIcon(icon);
+    } else {
+      const m = L.marker([ac.lat, ac.lon], {icon, zIndexOffset: alt}).addTo(map);
+      m.on('click', () => selectAircraft(ac.icao24));
+      state.markers.set(ac.icao24, m);
+    }
+    state.aircraft.set(ac.icao24, ac);
+  });
+
+  // Remove stale markers
+  state.markers.forEach((m, icao) => {
+    if (!seen.has(icao)) {
+      map.removeLayer(m);
+      state.markers.delete(icao);
+      state.aircraft.delete(icao);
+    }
+  });
+
+  // Update counts
+  const total = state.markers.size;
+  document.getElementById('flight-count').textContent = String(total).padStart(3,'0');
+  document.getElementById('stat-total').textContent = total;
+  document.getElementById('stat-air').textContent = airborne;
+  document.getElementById('stat-gnd').textContent = ground;
+  document.getElementById('sq7700-count').textContent = sq7700;
+  document.getElementById('sq7600-count').textContent = sq7600;
+  document.getElementById('sq7500-count').textContent = sq7500;
+  document.getElementById('emg-count').textContent = sq7700+sq7600+sq7500;
+
+  // Conflict detection
+  detectConflicts(list);
+
+  // Update strips
+  updateStrips(list.slice(0,200));
+
+  // Emergency log
+  if (emgList.length > 0) {
+    emgList.forEach(ac => {
+      addCommLog('rx', `EMERGENCY: ${ac.callsign||ac.icao24} SQUAWK ${ac.squawk} - ${ac.emgType}`);
+    });
+  }
+
+  addCommLog('sys', `DATA UPDATE: ${total} FLIGHTS FROM ${state.activeSources.size} SOURCE(S)`);
+}
+
+// ============================================================
+// CONFLICT DETECTION
+// ============================================================
+function detectConflicts(list) {
+  const SEP_H = 5;   // NM horizontal
+  const SEP_V = 1000; // ft vertical
+  let conflicts = 0;
+  const conflictPairs = [];
+
+  const arr = list.filter(a => a.lat && a.lon && a.altitude > 1000);
+  for (let i = 0; i < Math.min(arr.length, 500); i++) {
+    for (let j = i+1; j < Math.min(arr.length, 500); j++) {
+      const a = arr[i], b = arr[j];
+      const dh = haversine(a.lat, a.lon, b.lat, b.lon);
+      const dv = Math.abs((a.altitude||0)-(b.altitude||0));
+      if (dh < SEP_H && dv < SEP_V) {
+        conflicts++;
+        conflictPairs.push(`${a.callsign||a.icao24} / ${b.callsign||b.icao24}`);
+      }
+    }
+  }
+  document.getElementById('conflicts-count').textContent = conflicts;
+  document.getElementById('conflict-count').textContent = conflicts;
+  const cl = document.getElementById('conflicts-list');
+  if (conflicts > 0) {
+    cl.innerHTML = conflictPairs.slice(0,3).map(p => `⚠ ${p}`).join('<br>');
+  } else {
+    cl.innerHTML = 'ACTIVE ALERTS<br>ALL SYSTEMS NORMAL';
+  }
+}
+
+function haversine(lat1, lon1, lat2, lon2) {
+  const R = 3440.07; // NM
+  const dLat = (lat2-lat1)*Math.PI/180;
+  const dLon = (lon2-lon1)*Math.PI/180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+// ============================================================
+// FLIGHT STRIPS
+// ============================================================
+let allStrips = [];
+function updateStrips(list) {
+  allStrips = list;
+  renderStrips(list, document.getElementById('strip-search').value);
+}
+
+function filterStrips(query) {
+  renderStrips(allStrips, query);
+}
+
+function renderStrips(list, query='') {
+  const q = query.toUpperCase();
+  const filtered = q ? list.filter(a => (a.callsign||'').includes(q)||(a.icao24||'').includes(q)||(a.type||'').includes(q)) : list;
+  const container = document.getElementById('strips-list');
+  container.innerHTML = filtered.slice(0,100).map(ac => {
+    const isEmg = ['7700','7600','7500'].includes(String(ac.squawk));
+    const alt = ac.altitude ? `FL${Math.round(ac.altitude/100).toString().padStart(3,'0')}` : 'GND';
+    const spd = ac.speed ? `${Math.round(ac.speed)}KT` : '';
+    const emgHtml = isEmg ? `<div class="strip-emg emg-flash">EMERG SQ${ac.squawk}</div>` : '';
+    return `<div class="strip ${isEmg?'emg':''} ${ac.icao24===state.selectedIcao?'selected':''}" onclick="selectAircraft('${ac.icao24}')">
+      <div class="strip-callsign">${ac.callsign||'---'} <span class="strip-icao">${ac.icao24||''}</span></div>
+      <div class="strip-detail">${ac.type||'---'} · ${alt} · ${spd}</div>
+      ${ac.origin||ac.dest ? `<div class="strip-route">${ac.origin||'???'} — ${ac.dest||'???'}</div>` : ''}
+      ${emgHtml}
+    </div>`;
+  }).join('');
+}
+
+// ============================================================
+// SELECT AIRCRAFT
+// ============================================================
+function selectAircraft(icao) {
+  state.selectedIcao = icao;
+  const ac = state.aircraft.get(icao);
+  if (!ac) return;
+  const el = document.getElementById('aircraft-detail');
+  el.style.display = 'block';
+  document.getElementById('ac-title').textContent = ac.callsign || ac.icao24;
+  document.getElementById('ac-icao').textContent = ac.icao24;
+  document.getElementById('ac-airline').textContent = ac.callsign?.slice(0,3) || '---';
+  document.getElementById('ac-type').textContent = ac.type || '---';
+  document.getElementById('ac-alt').textContent = ac.altitude ? `${Math.round(ac.altitude).toLocaleString()} ft (FL${Math.round(ac.altitude/100)})` : 'GND';
+  document.getElementById('ac-speed').textContent = ac.speed ? `${Math.round(ac.speed)} kts` : '---';
+  document.getElementById('ac-hdg').textContent = ac.heading ? `${Math.round(ac.heading)}°` : '---';
+  document.getElementById('ac-squawk').textContent = ac.squawk || '0000';
+  document.getElementById('ac-pos').textContent = `${ac.lat?.toFixed(3)}, ${ac.lon?.toFixed(3)}`;
+  document.getElementById('ac-origin').textContent = ac.origin || '---';
+  document.getElementById('ac-dest').textContent = ac.dest || '---';
+  document.getElementById('ac-vs').textContent = ac.vs ? `${ac.vs > 0 ? '+':''}${Math.round(ac.vs)} ft/min` : '---';
+  map.setView([ac.lat, ac.lon], Math.max(map.getZoom(), 6));
+
+  // Draw trail
+  if (state.trails.has(icao)) {
+    const trail = state.trails.get(icao);
+    if (trail.length > 1) {
+      if (state.trailLine) map.removeLayer(state.trailLine);
+      state.trailLine = L.polyline(trail, {color:'#00d4ff', weight:1.5, opacity:0.5, dashArray:'4,4'}).addTo(map);
+    }
+  }
+  // Refresh icons to show selection
+  state.markers.forEach((m, id) => {
+    const a = state.aircraft.get(id);
+    if (a) m.setIcon(getAircraftIcon(a.heading, a.altitude, a.squawk, id===icao));
+  });
+  updateStrips(allStrips);
+}
+
+function closeDetail() {
+  document.getElementById('aircraft-detail').style.display = 'none';
+  state.selectedIcao = null;
+  if (state.trailLine) map.removeLayer(state.trailLine);
+}
+
+// ============================================================
+// ATC COMMS LOG
+// ============================================================
+const commMessages = {
+  GND: ['GND: PUSHBACK APPROVED, FACE WEST', 'GND: TAXI TO RUNWAY 28L VIA ALPHA BRAVO', 'GND: HOLD SHORT OF RUNWAY 10R', 'GND: LINE UP AND WAIT RUNWAY 27'],
+  TWR: ['TWR: CLEARED FOR TAKEOFF RUNWAY 27R', 'TWR: WIND 270/15 CLEARED LANDING', 'TWR: GO AROUND TRAFFIC ON FINAL', 'TWR: CONTACT DEPARTURE 124.350'],
+  APP: ['APP: DESCEND FL120 QNH 1013', 'APP: RADAR CONTACT DESCEND FL080', 'APP: ILS APPROACH RUNWAY 09L', 'APP: SPEED 250 KNOTS OR LESS'],
+  DEP: ['DEP: CLIMB FL350 DIRECT SIGMA', 'DEP: TURN LEFT HEADING 180', 'DEP: CONTACT LONDON CONTROL 133.450', 'DEP: SQUAWK 4521'],
+  ENR: ['ENR: FL TEMP -42°C WIND 280/49 AT FL380', 'ENR: DIRECT ROUTE APPROVED', 'ENR: TRAFFIC 12 OCLOCK SAME LEVEL', 'ENR: MAINTAIN FL350 DIRECT ROMEO']
+};
+
+function addCommLog(type, msg) {
+  const log = document.getElementById('comm-log');
+  const div = document.createElement('div');
+  div.className = type==='rx'?'comm-rx':type==='tx'?'comm-tx':'comm-sys';
+  const time = new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+  div.textContent = `${time} ${msg}`;
+  log.appendChild(div);
+  // Keep last 20 messages
+  while (log.children.length > 20) log.removeChild(log.firstChild);
+  log.scrollTop = log.scrollHeight;
+}
+
+function setCommMode(mode) {
+  state.commMode = mode;
+  document.querySelectorAll('.comm-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  const freqs = {GND:'121.900 MHz',TWR:'118.100 MHz',APP:'119.750 MHz',DEP:'124.350 MHz',ENR:'133.600 MHz'};
+  document.getElementById('freq-live').textContent = freqs[mode] || '122.800 MHz';
+}
+
+function transmitClearance() {
+  const msgs = commMessages[state.commMode];
+  const msg = msgs[Math.floor(Math.random()*msgs.length)];
+  const sel = state.aircraft.get(state.selectedIcao);
+  const callsign = sel ? (sel.callsign || sel.icao24) : 'AIRCRAFT';
+  addCommLog('tx', `07125 ${callsign} ${msg}`);
+}
+
+// Random comm traffic
+setInterval(() => {
+  const msgs = commMessages[state.commMode];
+  if (Math.random() > 0.6) {
+    addCommLog('rx', msgs[Math.floor(Math.random()*msgs.length)]);
+  }
+}, 8000);
+
+// ============================================================
+// LIVE ATC AUDIO
+// ============================================================
+const audioData = {
+  us: [
+    {name:'New York KJFK - Approach', stream:'https://www.liveatc.net/get-flash-stream.php?v=kjfk_app'},
+    {name:'Los Angeles KLAX - Approach', stream:'https://www.liveatc.net/get-flash-stream.php?v=klax_app'},
+    {name:'Chicago KORD - Tower', stream:'https://www.liveatc.net/get-flash-stream.php?v=kord_twr'},
+    {name:'Atlanta KATL - Ground', stream:'https://www.liveatc.net/get-flash-stream.php?v=katl_gnd'},
+    {name:'Dallas KDFW - Approach', stream:'https://www.liveatc.net/get-flash-stream.php?v=kdfw_app'},
+    {name:'Denver KDEN - Approach', stream:'https://www.liveatc.net/get-flash-stream.php?v=kden_app'},
+    {name:'Miami KMIA - Tower', stream:'https://www.liveatc.net/get-flash-stream.php?v=kmia_twr'},
+    {name:'Seattle KSEA - Approach', stream:'https://www.liveatc.net/get-flash-stream.php?v=ksea_app'},
+  ],
+  uk: [
+    {name:'London Heathrow EGLL - Tower', stream:'https://www.liveatc.net/get-flash-stream.php?v=egll_twr'},
+    {name:'London Gatwick EGKK - Tower', stream:'https://www.liveatc.net/get-flash-stream.php?v=egkk'},
+    {name:'Manchester EGCC - Approach', stream:'https://www.liveatc.net/get-flash-stream.php?v=egcc'},
+    {name:'Edinburgh EGPH', stream:'https://www.liveatc.net/get-flash-stream.php?v=egph'},
+  ],
+  eu: [
+    {name:'Amsterdam EHAM - Approach', stream:'https://www.liveatc.net/get-flash-stream.php?v=eham'},
+    {name:'Frankfurt EDDF - Tower', stream:'https://www.liveatc.net/get-flash-stream.php?v=eddf_twr'},
+    {name:'Paris CDG LFPG', stream:'https://www.liveatc.net/get-flash-stream.php?v=lfpg'},
+    {name:'Madrid LEMD', stream:'https://www.liveatc.net/get-flash-stream.php?v=lemd'},
+    {name:'Rome LIRF', stream:'https://www.liveatc.net/get-flash-stream.php?v=lirf'},
+    {name:'Zurich LSZH', stream:'https://www.liveatc.net/get-flash-stream.php?v=lszh'},
+  ],
+  as: [
+    {name:'Tokyo Narita RJAA', stream:'https://www.liveatc.net/get-flash-stream.php?v=rjaa'},
+    {name:'Singapore WSSS', stream:'https://www.liveatc.net/get-flash-stream.php?v=wsss'},
+    {name:'Hong Kong VHHH', stream:'https://www.liveatc.net/get-flash-stream.php?v=vhhh'},
+    {name:'Bangkok VTBS', stream:'https://www.liveatc.net/get-flash-stream.php?v=vtbs'},
+  ],
+  me: [
+    {name:'Dubai OMDB - Approach', stream:'https://www.liveatc.net/get-flash-stream.php?v=omdb'},
+    {name:'Doha OTHH', stream:'https://www.liveatc.net/get-flash-stream.php?v=othh'},
+    {name:'Abu Dhabi OMAA', stream:'https://www.liveatc.net/get-flash-stream.php?v=omaa'},
+  ],
+  af: [
+    {name:'Johannesburg FAOR', stream:'https://www.liveatc.net/get-flash-stream.php?v=fajs'},
+    {name:'Cairo HECA', stream:'https://www.liveatc.net/get-flash-stream.php?v=heca'},
+    {name:'Nairobi HKJK', stream:'https://www.liveatc.net/get-flash-stream.php?v=hkjk'},
+  ],
+  sa: [
+    {name:'São Paulo SBGR', stream:'https://www.liveatc.net/get-flash-stream.php?v=sbgr'},
+    {name:'Bogota SKBO', stream:'https://www.liveatc.net/get-flash-stream.php?v=skbo'},
+    {name:'Santiago SCEL', stream:'https://www.liveatc.net/get-flash-stream.php?v=scel'},
+  ],
+  au: [
+    {name:'Sydney YSSY - Approach', stream:'https://www.liveatc.net/get-flash-stream.php?v=yssy_app'},
+    {name:'Melbourne YMML', stream:'https://www.liveatc.net/get-flash-stream.php?v=ymml'},
+    {name:'Brisbane YBBN', stream:'https://www.liveatc.net/get-flash-stream.php?v=ybbn'},
+  ],
+  in: [
+    {name:'Mumbai VABB - Approach', stream:'https://www.liveatc.net/get-flash-stream.php?v=vabb'},
+    {name:'Delhi VIDP - Approach', stream:'https://www.liveatc.net/get-flash-stream.php?v=vidp'},
+    {name:'Bangalore VOBL', stream:'https://www.liveatc.net/get-flash-stream.php?v=vobl'},
+    {name:'Chennai VOMM', stream:'https://www.liveatc.net/get-flash-stream.php?v=vomm'},
+    {name:'Kolkata VECC', stream:'https://www.liveatc.net/get-flash-stream.php?v=vecc'},
+    {name:'Hyderabad VOHS', stream:'https://www.liveatc.net/get-flash-stream.php?v=vohs'},
+  ]
+};
+
+function updateAirports() {
+  const region = document.getElementById('region-select').value;
+  const sel = document.getElementById('airport-select');
+  sel.innerHTML = '<option value="">-- SELECT AIRPORT --</option>';
+  if (region && audioData[region]) {
+    audioData[region].forEach((a, i) => {
+      sel.innerHTML += `<option value="${i}">${a.name}</option>`;
+    });
+  }
+  document.getElementById('airport-display').textContent = 'AIRPORT: ---';
+  document.getElementById('audio-status').textContent = '? SELECT AIRPORT';
+}
+
+function loadAudio() {
+  const region = document.getElementById('region-select').value;
+  const idx = document.getElementById('airport-select').value;
+  if (!region || idx === '') return;
+  const entry = audioData[region][parseInt(idx)];
+  if (!entry) return;
+  
+  document.getElementById('airport-display').textContent = `AIRPORT: ${entry.name.split(' ')[0]} ${entry.name.split(' ')[1] || ''}`;
+  document.getElementById('audio-title').textContent = '🔴 LIVE ATC AUDIO';
+  document.getElementById('audio-status').textContent = '⚡ CONNECTING...';
+  
+  const audio = document.getElementById('atc-audio');
+  const src = document.getElementById('audio-src');
+  src.src = entry.stream;
+  audio.load();
+  
+  // Try to play — LiveATC streams are MP3
+  audio.play().then(() => {
+    document.getElementById('audio-status').textContent = '🔴 LIVE - ON AIR';
+  }).catch(() => {
+    // Autoplay blocked — user needs to press play
+    document.getElementById('audio-status').textContent = '▶ PRESS PLAY TO LISTEN';
+  });
+  
+  addCommLog('sys', `AUDIO: TUNED TO ${entry.name}`);
+}
+
+// ============================================================
+// SIMULATION MODE (fallback)
+// ============================================================
+const airlines = ['AAL','UAL','DAL','SWA','BAW','DLH','AFR','KLM','UAE','QTR','SIA','CPA','QFA','THY','IBE'];
+const types = ['B738','B77W','A320','A321','B744','A380','B787','A350','E190','CRJ7'];
+let simInterval = null;
+let simPlanes = [];
+
+function startSim() {
+  if (simPlanes.length === 0) {
+    // Generate simulated aircraft
+    for (let i = 0; i < 800; i++) {
+      simPlanes.push({
+        icao24: Math.random().toString(16).slice(2,8),
+        callsign: airlines[Math.floor(Math.random()*airlines.length)] + Math.floor(Math.random()*9000+1000),
+        lat: (Math.random()*160)-80,
+        lon: (Math.random()*360)-180,
+        altitude: Math.random() > 0.05 ? Math.floor(Math.random()*400+50)*100 : 0,
+        speed: Math.floor(Math.random()*300+400),
+        heading: Math.floor(Math.random()*360),
+        vs: (Math.random()-0.5)*3000,
+        squawk: '2000',
+        type: types[Math.floor(Math.random()*types.length)],
+        dlat: (Math.random()-0.5)*0.04,
+        dlon: (Math.random()-0.5)*0.06,
+        source: 'sim'
+      });
+    }
+  }
+  if (simInterval) clearInterval(simInterval);
+  simInterval = setInterval(() => {
+    simPlanes.forEach(p => {
+      p.lat += p.dlat;
+      p.lon += p.dlon;
+      if (p.lat > 85) p.dlat *= -1;
+      if (p.lat < -85) p.dlat *= -1;
+      if (p.lon > 180) p.lon = -180;
+      if (p.lon < -180) p.lon = 180;
+    });
+    updateAircraft(simPlanes);
+  }, 3000);
+  updateAircraft(simPlanes);
+}
+
+function toggleSim() {
+  state.simMode = !state.simMode;
+  const btn = document.getElementById('sim-toggle');
+  if (state.simMode) {
+    btn.className = 'badge badge-active emg-flash';
+    btn.textContent = '● SIMULATED';
+    startSim();
+  } else {
+    btn.className = 'badge badge-sim';
+    btn.textContent = '○ SIMULATED';
+    if (simInterval) clearInterval(simInterval);
+    fetchAllSources();
+  }
+}
+
+// ============================================================
+// UI HELPERS
+// ============================================================
+function setSourceStatus(id, on) {
+  const el = document.getElementById(id);
+  if (el) {
+    el.className = `src-tag ${on ? 'src-on':'src-off'}`;
+  }
+}
+
+function updateAltFilter() {
+  const min = parseInt(document.getElementById('alt-min').value) * 100;
+  const max = parseInt(document.getElementById('alt-max').value) * 100;
+  state.altMin = min;
+  state.altMax = max;
+  document.getElementById('alt-min-val').textContent = min > 0 ? `FL${String(min/100).padStart(3,'0')}` : 'GND';
+  document.getElementById('alt-max-val').textContent = `FL${String(max/100).padStart(3,'0')}`;
+}
+
+function toggleLabels() {
+  // Labels are embedded in icons; re-render will pick up setting
+}
+
+// ============================================================
+// CLOCK
+// ============================================================
+function updateClock() {
+  const now = new Date();
+  const utc = now.toUTCString();
+  document.getElementById('utc-clock').textContent = now.toISOString().slice(11,19) + 'z';
+  document.getElementById('utc-date').textContent = `MON ${now.toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'2-digit'})} IST\nUTC: ${now.toISOString().slice(11,19)}`;
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ============================================================
+// INIT
+// ============================================================
+addCommLog('sys', 'GLOBAL ATC SURVEILLANCE v9 INITIALIZING...');
+addCommLog('sys', 'CONNECTING TO: ADSB.FI · ADSB.LOL · OPENSKY');
+addCommLog('sys', 'CORS-FIXED BUILD — MULTI-SOURCE AGGREGATION');
+
+// Initial fetch
+fetchAllSources();
+
+// Refresh every 15 seconds
+setInterval(() => {
+  if (!state.simMode) fetchAllSources();
+}, 15000);
+
+// Initial comm message
+setTimeout(() => addCommLog('rx', 'INFO R: FL TEMP -42°C · WIND 280/49 AT FL380 · RVSM ACTIVE ALL LEVELS'), 2000);
+setTimeout(() => addCommLog('tx', '07125 MQ901 MAINTAIN FL350 DIRECT DELHI'), 5000);
+</script>
+</body>
+</html>
 <title>Global ATC Surveillance — Live Data</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
