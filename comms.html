@@ -1,23 +1,43 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>ATC Communications</title>
+<title>ATC Communications</title>
+
+<style>
+body{
+    background:black;
+    color:cyan;
+    font-family:monospace;
+}
+</style>
+
 </head>
+
 <body>
 
-<h1>ATC Communications</h1>
+<h1>ATC COMMUNICATIONS</h1>
 
-<h2>Ground (GND)</h2>
+<div id="comms-panel">
+    <div id="comms-title">
+        <span>📡 ATC COMMS</span>
+        <span id="freq-live" style="color:lime;font-size:9px;">122.800 MHz</span>
+    </div>
 
-<h2>Tower (TWR)</h2>
+    <div class="comm-btns">
+        <button class="comm-btn active" onclick="setCommMode('GND')">GND</button>
+        <button class="comm-btn" onclick="setCommMode('TWR')">TWR</button>
+        <button class="comm-btn" onclick="setCommMode('APP')">APP</button>
+        <button class="comm-btn" onclick="setCommMode('DEP')">DEP</button>
+        <button class="comm-btn" onclick="setCommMode('ENR')">ENR</button>
+    </div>
 
-<h2>Approach (APP)</h2>
+    <div id="comm-log"></div>
 
-<h2>Departure (DEP)</h2>
+    <button id="transmit-btn" onclick="transmitClearance()">
+        📜 TRANSMIT CLEARANCE
+    </button>
 
-<h2>Enroute (ENR)</h2>
-
-<button>Transmit Clearance</button>
+</div>
 
 </body>
 </html>
