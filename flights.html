@@ -101,9 +101,23 @@ SEARCH
 </table>
 <script>
 function searchFlight() {
-    alert("Flight search will be connected later.");
+
+    const query = document.getElementById("flight-search").value;
+
+    document.getElementById("flight-number").innerHTML = query.toUpperCase();
+    document.getElementById("callsign").innerHTML = "AI102";
+    document.getElementById("icao24").innerHTML = "800123";
+    document.getElementById("aircraft").innerHTML = "Airbus A320";
+    document.getElementById("dep").innerHTML = "DEL";
+    document.getElementById("arr").innerHTML = "BOM";
+    document.getElementById("altitude").innerHTML = "35000 ft";
+    document.getElementById("speed").innerHTML = "470 knots";
+    document.getElementById("heading").innerHTML = "270°";
+    document.getElementById("eta").innerHTML = "17:45 UTC";
+    document.getElementById("delay").innerHTML = "0 min";
+
 }
-<script>
+</script>
 function searchFlight() {
 
     const query = document.getElementById("flight-search").value;
