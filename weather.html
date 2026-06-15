@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html>
 <html>
 <head>
@@ -61,17 +62,12 @@ SEARCH
 
 <tr>
 <td>Temperature</td>
-<td id="temp">---</td>
+<td id="temperature">---</td>
 </tr>
 
 <tr>
-<td>Wind</td>
-<td id="wind">---</td>
-</tr>
-
-<tr>
-<td>Visibility</td>
-<td id="vis">---</td>
+<td>Humidity</td>
+<td id="humidity">---</td>
 </tr>
 
 <tr>
@@ -80,24 +76,63 @@ SEARCH
 </tr>
 
 <tr>
-<td>Condition</td>
-<td id="condition">---</td>
+<td>Wind Speed</td>
+<td id="wind-speed">---</td>
+</tr>
+
+<tr>
+<td>Wind Direction</td>
+<td id="wind-direction">---</td>
+</tr>
+
+<tr>
+<td>Visibility</td>
+<td id="visibility">---</td>
+</tr>
+
+<tr>
+<td>Cloud Cover</td>
+<td id="cloud-cover">---</td>
+</tr>
+
+<tr>
+<td>Rainfall</td>
+<td id="rainfall">---</td>
+</tr>
+
+<tr>
+<td>METAR</td>
+<td id="metar">---</td>
+</tr>
+
+<tr>
+<td>TAF</td>
+<td id="taf">---</td>
 </tr>
 
 </table>
 
 <script>
 
-function getWeather(){
+function getWeather() {
 
-let code=document.getElementById("airport-code").value.toUpperCase();
+    let code = document.getElementById("airport-code").value.toUpperCase();
 
-document.getElementById("airport").innerHTML=code;
-document.getElementById("temp").innerHTML="32°C";
-document.getElementById("wind").innerHTML="280° / 12 kt";
-document.getElementById("vis").innerHTML="10 km";
-document.getElementById("pressure").innerHTML="1013 hPa";
-document.getElementById("condition").innerHTML="Clear";
+    document.getElementById("airport").innerHTML = code;
+    document.getElementById("temperature").innerHTML = "32°C";
+    document.getElementById("humidity").innerHTML = "60%";
+    document.getElementById("pressure").innerHTML = "1013 hPa";
+    document.getElementById("wind-speed").innerHTML = "12 kt";
+    document.getElementById("wind-direction").innerHTML = "280°";
+    document.getElementById("visibility").innerHTML = "10 km";
+    document.getElementById("cloud-cover").innerHTML = "20%";
+    document.getElementById("rainfall").innerHTML = "0 mm";
+
+    document.getElementById("metar").innerHTML =
+    "VIDP 150900Z 28012KT 9999 FEW020 32/20 Q1013";
+
+    document.getElementById("taf").innerHTML =
+    "TAF VIDP 150900Z 28012KT CAVOK";
 
 }
 
@@ -105,3 +140,4 @@ document.getElementById("condition").innerHTML="Clear";
 
 </body>
 </html>
+```
