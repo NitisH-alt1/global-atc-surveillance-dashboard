@@ -26,6 +26,25 @@ padding:8px;
 <body>
 
 <h1>✈ FLIGHT DETAILS</h1>
+  <div style="margin-bottom:20px;">
+
+<input
+type="text"
+id="flight-search"
+placeholder="Enter Flight Number or Callsign"
+style="
+background:black;
+color:cyan;
+border:1px solid cyan;
+padding:8px;
+width:300px;
+">
+
+<button onclick="searchFlight()">
+SEARCH
+</button>
+
+</div>
 
 <table>
 
@@ -35,61 +54,55 @@ padding:8px;
 </tr>
 
 <tr>
-<td>Flight Number</td>
-<td>---</td>
+    <td>Flight Number</td>
+    <td id="flight-number">---</td>
 </tr>
-
 <tr>
-<td>Callsign</td>
-<td>---</td>
+    <td>Callsign</td>
+    <td id="callsign">---</td>
 </tr>
-
 <tr>
-<td>ICAO24</td>
-<td>---</td>
+    <td>ICAO24</td>
+    <td id="icao24">---</td>
 </tr>
-
 <tr>
-<td>Aircraft Type</td>
-<td>---</td>
+    <td>Aircraft</td>
+    <td id="aircraft">---</td>
 </tr>
-
 <tr>
-<td>Departure Airport</td>
-<td>---</td>
+    <td>Departure</td>
+    <td id="dep">---</td>
 </tr>
-
 <tr>
-<td>Arrival Airport</td>
-<td>---</td>
+    <td>Arrival</td>
+    <td id="arr">---</td>
 </tr>
-
 <tr>
-<td>Altitude</td>
-<td>---</td>
+    <td>Altitude</td>
+    <td id="altitude">---</td>
 </tr>
-
 <tr>
-<td>Speed</td>
-<td>---</td>
+    <td>Speed</td>
+    <td id="speed">---</td>
 </tr>
-
 <tr>
-<td>Heading</td>
-<td>---</td>
+    <td>Headin  g</td>
+    <td id="heading">---</td>
 </tr>
-
 <tr>
-<td>ETA</td>
-<td>---</td>
+    <td>ETA</td>
+    <td id="eta">---</td>
 </tr>
-
 <tr>
-<td>Delay</td>
-<td>---</td>
+    <td>Delay</td>
+    <td id="delay">---</td>
 </tr>
 
 </table>
-
+<script>
+function searchFlight() {
+    alert("Flight search will be connected later.");
+}
+</script>
 </body>
 </html>
