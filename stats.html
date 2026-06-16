@@ -2,103 +2,101 @@
 <html>
 <head>
 <title>ATC Statistics</title>
+
+<style>
+body{
+    background:#111827;
+    color:white;
+    font-family:Arial,sans-serif;
+}
+
+h1{
+    text-align:center;
+    margin-top:30px;
+}
+
+table{
+    margin:auto;
+    margin-top:30px;
+    border-collapse:collapse;
+    width:50%;
+    background:#1f2937;
+}
+
+th,td{
+    border:1px solid #374151;
+    padding:15px;
+}
+
+th{
+    background:#2563eb;
+}
+
+tr:hover{
+    background:#374151;
+}
+</style>
+
 </head>
 <body>
 
+<h1>Global ATC Statistics</h1>
+
 <table>
+
 <tr>
 <th>Parameter</th>
 <th>Value</th>
 </tr>
 
-<tr>
-<td>Total Flights</td>
-<td id="total-flights">---</td>
-</tr>
-
-<tr>
-<td>Live Flights</td>
-<td id="live-flights">---</td>
-</tr>
-
-<tr>
-<td>Departures</td>
-<td id="departures">---</td>
-</tr>
-
-<tr>
-<td>Arrivals</td>
-<td id="arrivals">---</td>
-</tr>
-
-<tr>
-<td>Average Altitude</td>
-<td id="avg-altitude">---</td>
-</tr>
-
-<tr>
-<td>Average Speed</td>
-<td id="avg-speed">---</td>
-</tr>
-
-<tr>
-<td>Aircraft Types</td>
-<td id="aircraft-types">---</td>
-</tr>
-
-<tr>
-<td>Busiest Airport</td>
-<td id="busiest-airport">---</td>
-</tr>
-
-<tr>
-<td>Busiest Route</td>
-<td id="busiest-route">---</td>
-</tr>
-
-<tr>
-<td>Last Update</td>
-<td id="last-update">---</td>
-</tr>
+<tr><td>Total Flights</td><td id="total-flights">---</td></tr>
+<tr><td>Live Flights</td><td id="live-flights">---</td></tr>
+<tr><td>Departures</td><td id="departures">---</td></tr>
+<tr><td>Arrivals</td><td id="arrivals">---</td></tr>
+<tr><td>Average Altitude</td><td id="avg-altitude">---</td></tr>
+<tr><td>Average Speed</td><td id="avg-speed">---</td></tr>
+<tr><td>Aircraft Types</td><td id="aircraft-types">---</td></tr>
+<tr><td>Busiest Airport</td><td id="busiest-airport">---</td></tr>
+<tr><td>Busiest Route</td><td id="busiest-route">---</td></tr>
+<tr><td>Last Update</td><td id="last-update">---</td></tr>
 
 </table>
 
 <script>
 
-async function loadStats() {
+async function loadStats(){
 
-try {
+try{
 
-const response = await fetch("https://atc-backend-4unh.onrender.com/api/stats");
+const response =
+await fetch("https://atc-backend-4unh.onrender.com/api/stats");
 
 const data = await response.json();
 
-document.getElementById("total-flights").innerText = data.totalFlights || "---";
-document.getElementById("live-flights").innerText = data.liveFlights || "---";
-document.getElementById("departures").innerText = data.departures || "---";
-document.getElementById("arrivals").innerText = data.arrivals || "---";
-document.getElementById("avg-altitude").innerText = data.avgAltitude || "---";
-document.getElementById("avg-speed").innerText = data.avgSpeed || "---";
-document.getElementById("aircraft-types").innerText = data.aircraftTypes || "---";
-document.getElementById("busiest-airport").innerText = data.busiestAirport || "---";
-document.getElementById("busiest-route").innerText = data.busiestRoute || "---";
-document.getElementById("last-update").innerText = new Date().toLocaleTimeString();
+document.getElementById("total-flights").innerText = data.totalFlights;
+document.getElementById("live-flights").innerText = data.liveFlights;
+document.getElementById("departures").innerText = data.departures;
+document.getElementById("arrivals").innerText = data.arrivals;
+document.getElementById("avg-altitude").innerText = data.avgAltitude;
+document.getElementById("avg-speed").innerText = data.avgSpeed;
+document.getElementById("aircraft-types").innerText = data.aircraftTypes;
+document.getElementById("busiest-airport").innerText = data.busiestAirport;
+document.getElementById("busiest-route").innerText = data.busiestRoute;
+document.getElementById("last-update").innerText =
+new Date().toLocaleTimeString();
 
 }
-catch(error) {
-
+catch(error){
 console.log(error);
-
 }
 
 }
 
 loadStats();
 
-setInterval(loadStats, 30000);
+setInterval(loadStats,30000);
 
 </script>
 
 </body>
 </html>
-
